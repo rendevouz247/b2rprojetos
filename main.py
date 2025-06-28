@@ -42,7 +42,7 @@ def buscar_amazon():
 
     for item in itens:
         id_item = item["id_orcamento"]
-        descricao = item["descricao_orcamento"]
+        descricao = item["descricao_orcamento"].strip()
 
         # Buscar na Amazon
         busca = requests.get(
@@ -50,20 +50,26 @@ def buscar_amazon():
             headers=headers_amazon,
             params={"query": descricao, "country": "BR"}
         )
-        # Imprime o JSON completo retornado pela API RapidAPI
-        print(busca.json())
 
         if busca.status_code == 200:
             busca_json = busca.json()
-            resultados = busca_json.get("data")
+            resultados = busca_json.get("data", {}).get("products", [])
 
-            # Verifica se "data" existe e tem pelo menos um resultado
             if resultados and isinstance(resultados, list) and len(resultados) > 0:
                 produto = resultados[0]
-                titulo = produto.get("title", "")
+                titulo = produto.get("product_title", "")
                 foto = produto.get("product_photo", "")
                 url = produto.get("product_url", "")
-                preco = produto.get("price", {}).get("current_price", None)
+                preco_str = produto.get("product_price", None)  # Ex: "R$ 59,90"
+
+                # Converter preco_str para float (ex: "R$ 59,90" -> 59.90)
+                preco = None
+                if preco_str:
+                    preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+                    try:
+                        preco = float(preco_str)
+                    except:
+                        preco = None
 
                 # Atualizar no Supabase
                 update = {
@@ -80,7 +86,6 @@ def buscar_amazon():
                 )
 
                 if r2.status_code not in (200, 204):
-                    # Pode registrar log aqui se quiser
                     print(f"Erro ao atualizar item {id_item}: {r2.status_code} - {r2.text}")
 
                 atualizados.append({
@@ -89,7 +94,6 @@ def buscar_amazon():
                     "titulo": titulo,
                     "valor_amazon": preco
                 })
-
             else:
                 print(f"Nenhum resultado para a busca: '{descricao}'")
         else:
