@@ -50,6 +50,8 @@ def buscar_amazon():
             headers=headers_amazon,
             params={"query": descricao, "country": "BR"}
         )
+        # Imprime o JSON completo retornado pela API RapidAPI
+        print(busca.json())
 
         if busca.status_code == 200:
             busca_json = busca.json()
