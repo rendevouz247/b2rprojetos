@@ -5,8 +5,8 @@ app = Flask(__name__)
 
 # CONFIGURAÇÕES 🔧
 RAPIDAPI_KEY = '47fd75997bmsh1ae1de830d5e64ap1db9dajsndfdb31d381d4'
-SUPABASE_URL = 'https://SEU-PROJETO.supabase.co'  # << coloque aqui seu projeto Supabase
-SUPABASE_API_KEY = 'SUA_SUPABASE_SERVICE_KEY'     # << use sua chave secreta (service_role)
+SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'  # << coloque aqui seu projeto Supabase
+SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbWlwYmJ1dGZxZmJiaHh6cmdxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODAxMzcwMiwiZXhwIjoyMDYzNTg5NzAyfQ.LToADPdvVbpsYAh6kr_pNXSXOp8RN52bFTXNb2yZheQ'     # << use sua chave secreta (service_role)
 
 @app.route('/buscar_amazon', methods=['GET'])
 def buscar_amazon():
