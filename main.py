@@ -22,7 +22,7 @@ def buscar_amazon():
 
     # Buscar os itens da tab_orcamento com o id_projeto informado
     r = requests.get(
-        f"{SUPABASE_URL}/rest/v1/tab_orcamento?select=id,descricao_orcamento&id_projeto=eq.{id_projeto}",
+        f"{SUPABASE_URL}/rest/v1/tab_orcamento?select=id_orcamento,descricao_orcamento&id_projeto=eq.{id_projeto}",
         headers=headers_supabase
     )
 
@@ -41,14 +41,14 @@ def buscar_amazon():
     atualizados = []
 
     for item in itens:
-        id_item = item["id"]
+        id_item = item["id_orcamento"]
         descricao = item["descricao_orcamento"]
 
         # Buscar na Amazon
         busca = requests.get(
             "https://real-time-amazon-data.p.rapidapi.com/search",
             headers=headers_amazon,
-            params={"query": descricao, "country": "US"}
+            params={"query": descricao, "country": "BR"}
         )
 
         if busca.status_code == 200:
