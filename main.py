@@ -7,7 +7,7 @@ app = Flask(__name__)
 # CONFIGURAÇÕES 🔧
 RAPIDAPI_KEY = 'SUA_RAPIDAPI_KEY'
 SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'
-SUPABASE_API_KEY = 'SUA_SUPABASE_KEY'
+SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbWlwYmJ1dGZxZmJiaHh6cmdxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODAxMzcwMiwiZXhwIjoyMDYzNTg5NzAyfQ.LToADPdvVbpsYAh6kr_pNXSXOp8RN52bFTXNb2yZheQ'
 
 def similaridade(a, b):
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
