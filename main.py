@@ -5,9 +5,9 @@ from difflib import SequenceMatcher
 app = Flask(__name__)
 
 # CONFIGURAÇÕES 🔧
-RAPIDAPI_KEY = '47fd75997bmsh1ae1de830d5e64ap1db9dajsndfdb31d381d4'
+RAPIDAPI_KEY = 'SUA_RAPIDAPI_KEY'
 SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'
-SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...zheQ'  # corta a parte sensível se for público
+SUPABASE_API_KEY = 'SUA_SUPABASE_KEY'
 
 def similaridade(a, b):
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
@@ -16,7 +16,10 @@ def similaridade(a, b):
 def buscar_amazon():
     id_projeto = request.args.get("id_projeto")
     if not id_projeto:
+        print("[ERRO] id_projeto não fornecido.")
         return jsonify({"erro": "Parâmetro 'id_projeto' ausente."}), 400
+
+    print(f"[INÍCIO] Buscando produtos para id_projeto: {id_projeto}")
 
     headers_supabase = {
         "apikey": SUPABASE_API_KEY,
@@ -24,18 +27,18 @@ def buscar_amazon():
         "Content-Type": "application/json"
     }
 
-    # Buscar todos os itens do projeto com o campo amazon
     r = requests.get(
-        f"{SUPABASE_URL}/rest/v1/tab_orcamento"
-        f"?select=id_orcamento,descricao_orcamento,amazon"
-        f"&id_projeto=eq.{id_projeto}",
+        f"{SUPABASE_URL}/rest/v1/tab_orcamento?select=id_orcamento,descricao_orcamento,amazon&id_projeto=eq.{id_projeto}",
         headers=headers_supabase
     )
 
     if r.status_code != 200:
+        print(f"[ERRO] Falha ao buscar do Supabase: {r.status_code} - {r.text}")
         return jsonify({"erro": "Erro ao buscar dados do Supabase", "status_code": r.status_code, "resposta": r.text}), 500
 
     itens = r.json()
+    print(f"[INFO] {len(itens)} itens encontrados para o projeto.")
+
     if not itens:
         return jsonify({"mensagem": "Nenhum item encontrado para esse id_projeto."}), 200
 
@@ -52,9 +55,11 @@ def buscar_amazon():
         ja_foi = item.get("amazon")
 
         if ja_foi is True:
-            continue  # pula se já foi processado
+            print(f"[SKIP] Item {id_item} já processado (amazon=True). Pulando...")
+            continue
 
-        # Buscar na Amazon
+        print(f"[PROCESSANDO] Item {id_item} - '{descricao}'")
+
         busca = requests.get(
             "https://real-time-amazon-data.p.rapidapi.com/search",
             headers=headers_amazon,
@@ -65,10 +70,15 @@ def buscar_amazon():
 
         if busca.status_code == 200:
             produtos = busca.json().get("data", {}).get("products", [])
+            print(f"[AMAZON] {len(produtos)} produtos encontrados para '{descricao}'")
+
             if produtos:
                 produto = produtos[0]
                 titulo_busca = produto.get("product_title", "")
-                if similaridade(descricao, titulo_busca) >= 0.4:
+                sim = similaridade(descricao, titulo_busca)
+                print(f"[SIMILARIDADE] '{descricao}' x '{titulo_busca}' = {sim:.2f}")
+
+                if sim >= 0.4:
                     titulo = titulo_busca
                     foto = produto.get("product_photo", "")
                     url = produto.get("product_url", "")
@@ -79,8 +89,9 @@ def buscar_amazon():
                             preco = float(preco_str)
                         except:
                             preco = 0
+        else:
+            print(f"[ERRO] Erro na API Amazon: {busca.status_code} - {busca.text}")
 
-        # Atualizar o item no Supabase, seja com dados válidos ou 'não encontrado'
         update = {
             "titulo_amazon": titulo,
             "foto_produto": foto,
@@ -89,6 +100,7 @@ def buscar_amazon():
             "amazon": True
         }
 
+        print(f"[ATUALIZANDO] id_orcamento: {id_item}, título: {titulo}, valor: {preco}")
         r2 = requests.patch(
             f"{SUPABASE_URL}/rest/v1/tab_orcamento?id_orcamento=eq.{id_item}",
             headers=headers_supabase,
@@ -96,7 +108,7 @@ def buscar_amazon():
         )
 
         if r2.status_code not in (200, 204):
-            print(f"Erro ao atualizar item {id_item}: {r2.status_code} - {r2.text}")
+            print(f"[ERRO] Falha ao atualizar item {id_item}: {r2.status_code} - {r2.text}")
 
         atualizados.append({
             "id_item": id_item,
@@ -105,6 +117,7 @@ def buscar_amazon():
             "valor_amazon": preco
         })
 
+    print(f"[FINALIZADO] {len(atualizados)} itens atualizados.")
     return jsonify({
         "status": "ok",
         "id_projeto": id_projeto,
@@ -113,4 +126,3 @@ def buscar_amazon():
 
 if __name__ == '__main__':
     app.run()
-
