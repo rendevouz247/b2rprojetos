@@ -1,12 +1,16 @@
 from flask import Flask, request, jsonify
 import requests
+from difflib import SequenceMatcher
 
 app = Flask(__name__)
 
 # CONFIGURAÇÕES 🔧
 RAPIDAPI_KEY = '47fd75997bmsh1ae1de830d5e64ap1db9dajsndfdb31d381d4'
-SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'  # seu projeto Supabase
-SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbWlwYmJ1dGZxZmJiaHh6cmdxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODAxMzcwMiwiZXhwIjoyMDYzNTg5NzAyfQ.LToADPdvVbpsYAh6kr_pNXSXOp8RN52bFTXNb2yZheQ'  # sua chave service_role
+SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'
+SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...zheQ'  # corta a parte sensível se for público
+
+def similaridade(a, b):
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 @app.route('/buscar_amazon', methods=['GET'])
 def buscar_amazon():
@@ -20,9 +24,11 @@ def buscar_amazon():
         "Content-Type": "application/json"
     }
 
-    # Buscar os itens da tab_orcamento com o id_projeto informado
+    # Buscar todos os itens do projeto com o campo amazon
     r = requests.get(
-        f"{SUPABASE_URL}/rest/v1/tab_orcamento?select=id_orcamento,descricao_orcamento&id_projeto=eq.{id_projeto}",
+        f"{SUPABASE_URL}/rest/v1/tab_orcamento"
+        f"?select=id_orcamento,descricao_orcamento,amazon"
+        f"&id_projeto=eq.{id_projeto}",
         headers=headers_supabase
     )
 
@@ -42,7 +48,11 @@ def buscar_amazon():
 
     for item in itens:
         id_item = item["id_orcamento"]
-        descricao = item["descricao_orcamento"].strip()
+        descricao = item.get("descricao_orcamento", "").strip()
+        ja_foi = item.get("amazon")
+
+        if ja_foi is True:
+            continue  # pula se já foi processado
 
         # Buscar na Amazon
         busca = requests.get(
@@ -51,60 +61,55 @@ def buscar_amazon():
             params={"query": descricao, "country": "BR"}
         )
 
+        titulo, foto, url, preco = "Não encontrado", "", "Produto não localizado", 0
+
         if busca.status_code == 200:
-            busca_json = busca.json()
-            resultados = busca_json.get("data", {}).get("products", [])
+            produtos = busca.json().get("data", {}).get("products", [])
+            if produtos:
+                produto = produtos[0]
+                titulo_busca = produto.get("product_title", "")
+                if similaridade(descricao, titulo_busca) >= 0.4:
+                    titulo = titulo_busca
+                    foto = produto.get("product_photo", "")
+                    url = produto.get("product_url", "")
+                    preco_str = produto.get("product_price", "")
+                    if preco_str:
+                        preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+                        try:
+                            preco = float(preco_str)
+                        except:
+                            preco = 0
 
-            if resultados and isinstance(resultados, list) and len(resultados) > 0:
-                produto = resultados[0]
-                titulo = produto.get("product_title", "")
-                foto = produto.get("product_photo", "")
-                url = produto.get("product_url", "")
-                preco_str = produto.get("product_price", None)  # Ex: "R$ 59,90"
+        # Atualizar o item no Supabase, seja com dados válidos ou 'não encontrado'
+        update = {
+            "titulo_amazon": titulo,
+            "foto_produto": foto,
+            "url_produto": url,
+            "valor_amazon": preco,
+            "amazon": True
+        }
 
-                # Converter preco_str para float (ex: "R$ 59,90" -> 59.90)
-                preco = None
-                if preco_str:
-                    preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
-                    try:
-                        preco = float(preco_str)
-                    except:
-                        preco = None
+        r2 = requests.patch(
+            f"{SUPABASE_URL}/rest/v1/tab_orcamento?id_orcamento=eq.{id_item}",
+            headers=headers_supabase,
+            json=update
+        )
 
-                # Atualizar no Supabase
-                update = {
-                    "titulo_amazon": titulo,
-                    "foto_produto": foto,
-                    "url_produto": url,
-                    "valor_amazon": preco
-                }
+        if r2.status_code not in (200, 204):
+            print(f"Erro ao atualizar item {id_item}: {r2.status_code} - {r2.text}")
 
-                r2 = requests.patch(
-                    f"{SUPABASE_URL}/rest/v1/tab_orcamento?id_orcamento=eq.{id_item}",
-                    headers=headers_supabase,
-                    json=update
-                )
-
-                if r2.status_code not in (200, 204):
-                    print(f"Erro ao atualizar item {id_item}: {r2.status_code} - {r2.text}")
-
-                atualizados.append({
-                    "id_item": id_item,
-                    "descricao": descricao,
-                    "titulo": titulo,
-                    "valor_amazon": preco
-                })
-            else:
-                print(f"Nenhum resultado para a busca: '{descricao}'")
-        else:
-            print(f"Erro na requisição Amazon: {busca.status_code} para descrição: '{descricao}'")
+        atualizados.append({
+            "id_item": id_item,
+            "descricao": descricao,
+            "resultado": titulo,
+            "valor_amazon": preco
+        })
 
     return jsonify({
         "status": "ok",
         "id_projeto": id_projeto,
         "itens_atualizados": atualizados
     })
-
 
 if __name__ == '__main__':
     app.run()
