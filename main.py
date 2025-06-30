@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify
 import requests
 from difflib import SequenceMatcher
+from flask_cors import CORS
+
 
 app = Flask(__name__)
+
+CORS(app, origins=["https://b2rprojetos.flutterflow.app"])
 
 # CONFIGURAÇÕES 🔧
 RAPIDAPI_KEY = '47fd75997bmsh1ae1de830d5e64ap1db9dajsndfdb31d381d4'
