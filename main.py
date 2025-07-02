@@ -8,10 +8,17 @@ app = Flask(__name__)
 
 CORS(app, origins=["https://b2rprojetos.flutterflow.app"])
 
-# CONFIGURAÇÕES 🔧
-RAPIDAPI_KEY = '47fd75997bmsh1ae1de830d5e64ap1db9dajsndfdb31d381d4'
-SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'
-SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbWlwYmJ1dGZxZmJiaHh6cmdxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODAxMzcwMiwiZXhwIjoyMDYzNTg5NzAyfQ.LToADPdvVbpsYAh6kr_pNXSXOp8RN52bFTXNb2yZheQ'
+# # CONFIGURAÇÕES 🔧
+# RAPIDAPI_KEY = '47fd75997bmsh1ae1de830d5e64ap1db9dajsndfdb31d381d4'
+# SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'
+# SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbWlwYmJ1dGZxZmJiaHh6cmdxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODAxMzcwMiwiZXhwIjoyMDYzNTg5NzAyfQ.LToADPdvVbpsYAh6kr_pNXSXOp8RN52bFTXNb2yZheQ'
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+
 
 def similaridade(a, b):
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
