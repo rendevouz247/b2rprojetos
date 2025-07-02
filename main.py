@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify
 import requests
 from difflib import SequenceMatcher
 from flask_cors import CORS
+from supabase import create_client
+import os
+
 
 
 app = Flask(__name__)
