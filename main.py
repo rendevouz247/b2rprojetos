@@ -5,6 +5,7 @@ from flask_cors import CORS
 from supabase import create_client
 import os
 
+
 app = Flask(__name__)
 
 CORS(app, origins=["https://b2rprojetos.flutterflow.app"])
@@ -16,21 +17,8 @@ RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
-def jaccard_similarity(text1, text2):
-    set1 = set(text1.lower().split())
-    set2 = set(text2.lower().split())
-    intersection = set1.intersection(set2)
-    union = set1.union(set2)
-    if not union:
-        return 0.0
-    return len(intersection) / len(union)
-
 def similaridade(a, b):
-    jaccard = jaccard_similarity(a, b)
-    seq = SequenceMatcher(None, a.lower(), b.lower()).ratio()
-    # média ponderada: 50% Jaccard + 50% SequenceMatcher
-    return 0.5 * jaccard + 0.5 * seq
-
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 @app.route('/buscar_amazon', methods=['GET'])
 def buscar_amazon():
@@ -143,7 +131,6 @@ def buscar_amazon():
         "id_projeto": id_projeto,
         "itens_atualizados": atualizados
     })
-
 
 if __name__ == '__main__':
     app.run()
