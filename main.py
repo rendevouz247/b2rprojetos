@@ -4,6 +4,7 @@ from difflib import SequenceMatcher
 from flask_cors import CORS
 from supabase import create_client
 import os
+import re
 
 app = Flask(__name__)
 
@@ -16,12 +17,17 @@ RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
+STOPWORDS = {'de', 'do', 'da', 'para', 'com', 'e', 'em', 'a', 'o', 'os', 'as', 'no', 'na', 'um', 'uma', 'unissex'}
+
 def normalizar(texto):
-    return " ".join(sorted(texto.lower().replace(",", "").replace(".", "").split()))
+    texto = re.sub(r'[^a-zA-Z0-9\s]', '', texto.lower())
+    palavras = texto.split()
+    palavras = [p for p in palavras if p not in STOPWORDS]
+    return ' '.join(sorted(palavras))  # ordena para ficar mais neutro à posição das palavras
 
 def jaccard_similarity(text1, text2):
-    set1 = set(text1.split())
-    set2 = set(text2.split())
+    set1 = set(text1.lower().split())
+    set2 = set(text2.lower().split())
     intersection = set1.intersection(set2)
     union = set1.union(set2)
     if not union:
