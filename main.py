@@ -1,13 +1,11 @@
 from flask import Flask, request, jsonify
 import requests
-from difflib import SequenceMatcher
 from flask_cors import CORS
 from supabase import create_client
 import os
-import re
-
 
 app = Flask(__name__)
+
 CORS(app, origins=["https://b2rprojetos.flutterflow.app"])
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -16,25 +14,14 @@ RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
-
-def limpar_texto(texto):
-    texto = texto.lower()
-    texto = re.sub(r'[^a-z0-9çáéíóúãõâêîôûàèìòù\s]', '', texto)  # remove pontuação e caracteres especiais
-    texto = re.sub(r'\s+', ' ', texto)  # remove espaços extras
-    return texto.strip()
-
-
-def similaridade_boost(a, b):
-    a_clean = limpar_texto(a)
-    b_clean = limpar_texto(b)
-    base_score = SequenceMatcher(None, a_clean, b_clean).ratio()
-
-    termos = a_clean.split()
-    if all(t in b_clean for t in termos):
-        base_score += 0.2  # boost se todos os termos estiverem no título
-
-    return min(base_score, 1.0)
-
+def jaccard_similarity(text1, text2):
+    set1 = set(text1.lower().split())
+    set2 = set(text2.lower().split())
+    intersection = set1.intersection(set2)
+    union = set1.union(set2)
+    if not union:
+        return 0.0
+    return len(intersection) / len(union)
 
 @app.route('/buscar_amazon', methods=['GET'])
 def buscar_amazon():
@@ -96,29 +83,23 @@ def buscar_amazon():
             produtos = busca.json().get("data", {}).get("products", [])
             print(f"[AMAZON] {len(produtos)} produtos encontrados para '{descricao}'")
 
-            maior_sim = 0
-            melhor_produto = None
-
-            for produto in produtos:
+            if produtos:
+                produto = produtos[0]
                 titulo_busca = produto.get("product_title", "")
-                sim = similaridade_boost(descricao, titulo_busca)
+                sim = jaccard_similarity(descricao, titulo_busca)
                 print(f"[SIMILARIDADE] '{descricao}' x '{titulo_busca}' = {sim:.2f}")
 
-                if sim > maior_sim and sim >= 0.4:
-                    maior_sim = sim
-                    melhor_produto = produto
-
-            if melhor_produto:
-                titulo = melhor_produto.get("product_title", "Não encontrado")
-                foto = melhor_produto.get("product_photo", "")
-                url = melhor_produto.get("product_url", "")
-                preco_str = melhor_produto.get("product_price", "")
-                if preco_str:
-                    preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
-                    try:
-                        preco = float(preco_str)
-                    except:
-                        preco = 0
+                if sim >= 0.4:
+                    titulo = titulo_busca
+                    foto = produto.get("product_photo", "")
+                    url = produto.get("product_url", "")
+                    preco_str = produto.get("product_price", "")
+                    if preco_str:
+                        preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+                        try:
+                            preco = float(preco_str)
+                        except:
+                            preco = 0
         else:
             print(f"[ERRO] Erro na API Amazon: {busca.status_code} - {busca.text}")
 
@@ -154,7 +135,7 @@ def buscar_amazon():
         "itens_atualizados": atualizados
     })
 
-
 if __name__ == '__main__':
     app.run()
+
 
