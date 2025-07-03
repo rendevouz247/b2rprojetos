@@ -4,17 +4,11 @@ from difflib import SequenceMatcher
 from flask_cors import CORS
 from supabase import create_client
 import os
-
+import re
 
 
 app = Flask(__name__)
-
 CORS(app, origins=["https://b2rprojetos.flutterflow.app"])
-
-# # CONFIGURAÇÕES 🔧
-# RAPIDAPI_KEY = '47fd75997bmsh1ae1de830d5e64ap1db9dajsndfdb31d381d4'
-# SUPABASE_URL = 'https://bqmipbbutfqfbbhxzrgq.supabase.co'
-# SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbWlwYmJ1dGZxZmJiaHh6cmdxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODAxMzcwMiwiZXhwIjoyMDYzNTg5NzAyfQ.LToADPdvVbpsYAh6kr_pNXSXOp8RN52bFTXNb2yZheQ'
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
@@ -23,8 +17,24 @@ RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
-def similaridade(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+def limpar_texto(texto):
+    texto = texto.lower()
+    texto = re.sub(r'[^a-z0-9çáéíóúãõâêîôûàèìòù\s]', '', texto)  # remove pontuação e caracteres especiais
+    texto = re.sub(r'\s+', ' ', texto)  # remove espaços extras
+    return texto.strip()
+
+
+def similaridade_boost(a, b):
+    a_clean = limpar_texto(a)
+    b_clean = limpar_texto(b)
+    base_score = SequenceMatcher(None, a_clean, b_clean).ratio()
+
+    termos = a_clean.split()
+    if all(t in b_clean for t in termos):
+        base_score += 0.2  # boost se todos os termos estiverem no título
+
+    return min(base_score, 1.0)
+
 
 @app.route('/buscar_amazon', methods=['GET'])
 def buscar_amazon():
@@ -86,23 +96,29 @@ def buscar_amazon():
             produtos = busca.json().get("data", {}).get("products", [])
             print(f"[AMAZON] {len(produtos)} produtos encontrados para '{descricao}'")
 
-            if produtos:
-                produto = produtos[0]
+            maior_sim = 0
+            melhor_produto = None
+
+            for produto in produtos:
                 titulo_busca = produto.get("product_title", "")
-                sim = similaridade(descricao, titulo_busca)
+                sim = similaridade_boost(descricao, titulo_busca)
                 print(f"[SIMILARIDADE] '{descricao}' x '{titulo_busca}' = {sim:.2f}")
 
-                if sim >= 0.4:
-                    titulo = titulo_busca
-                    foto = produto.get("product_photo", "")
-                    url = produto.get("product_url", "")
-                    preco_str = produto.get("product_price", "")
-                    if preco_str:
-                        preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
-                        try:
-                            preco = float(preco_str)
-                        except:
-                            preco = 0
+                if sim > maior_sim and sim >= 0.4:
+                    maior_sim = sim
+                    melhor_produto = produto
+
+            if melhor_produto:
+                titulo = melhor_produto.get("product_title", "Não encontrado")
+                foto = melhor_produto.get("product_photo", "")
+                url = melhor_produto.get("product_url", "")
+                preco_str = melhor_produto.get("product_price", "")
+                if preco_str:
+                    preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+                    try:
+                        preco = float(preco_str)
+                    except:
+                        preco = 0
         else:
             print(f"[ERRO] Erro na API Amazon: {busca.status_code} - {busca.text}")
 
@@ -138,5 +154,7 @@ def buscar_amazon():
         "itens_atualizados": atualizados
     })
 
+
 if __name__ == '__main__':
     app.run()
+
