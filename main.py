@@ -33,7 +33,20 @@ def jaccard_similarity(text1, text2):
         return 0.0
     return len(intersection) / len(union)
 
+def tem_palavras_conflitantes(a, b):
+    # Palavras conflitantes comuns futebol vs futsal
+    conflitantes = [("futebol", "futsal"), ("futsal", "futebol")]
+    a_words = set(a.lower().split())
+    b_words = set(b.lower().split())
+    for p1, p2 in conflitantes:
+        if p1 in a_words and p2 in b_words:
+            print(f"[CONFLITO] Palavra '{p1}' em '{a}' e '{p2}' em '{b}', score zerado.")
+            return True
+    return False
+
 def similaridade(a, b):
+    if tem_palavras_conflitantes(a, b):
+        return 0.0
     norm_a = normalizar(a)
     norm_b = normalizar(b)
 
@@ -46,7 +59,6 @@ def similaridade(a, b):
     score = (jaccard * peso_jaccard + sequence * peso_sequence)
     print(f"[SIMILARIDADE] '{a}' x '{b}' => Jaccard: {jaccard:.2f}, SeqMatch: {sequence:.2f}, Score Final: {score:.2f}")
     return score
-
 
 @app.route('/buscar_amazon', methods=['GET'])
 def buscar_amazon():
@@ -108,18 +120,19 @@ def buscar_amazon():
             produtos = busca.json().get("data", {}).get("products", [])
             print(f"[AMAZON] {len(produtos)} produtos encontrados para '{descricao}'")
 
-            melhor_sim = 0
+            melhor_score = 0
             melhor_produto = None
 
             for produto in produtos:
                 titulo_busca = produto.get("product_title", "")
                 sim = similaridade(descricao, titulo_busca)
-                if sim > melhor_sim:
-                    melhor_sim = sim
+
+                if sim > melhor_score:
+                    melhor_score = sim
                     melhor_produto = produto
 
-            if melhor_sim >= 0.3 and melhor_produto is not None:
-                titulo = melhor_produto.get("product_title", "")
+            if melhor_score >= 0.3 and melhor_produto:
+                titulo = melhor_produto.get("product_title", "Não encontrado")
                 foto = melhor_produto.get("product_photo", "")
                 url = melhor_produto.get("product_url", "")
                 preco_str = melhor_produto.get("product_price", "")
@@ -129,9 +142,6 @@ def buscar_amazon():
                         preco = float(preco_str)
                     except:
                         preco = 0
-                print(f"[SIMILARIDADE] Melhor produto para '{descricao}': '{titulo}' com score {melhor_sim:.2f}")
-            else:
-                print(f"[SIMILARIDADE] Nenhum produto com score suficiente para '{descricao}'.")
         else:
             print(f"[ERRO] Erro na API Amazon: {busca.status_code} - {busca.text}")
 
