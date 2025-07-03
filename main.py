@@ -26,13 +26,11 @@ def jaccard_similarity(text1, text2):
     return len(intersection) / len(union)
 
 def similaridade(a, b):
-    # Combina Jaccard e SequenceMatcher
     jaccard = jaccard_similarity(a, b)
     sequence = SequenceMatcher(None, a.lower(), b.lower()).ratio()
-    
-    # Ponderação: você pode ajustar os pesos aqui
-    peso_jaccard = 0.6
-    peso_sequence = 0.4
+
+    peso_jaccard = 0.3
+    peso_sequence = 0.7
 
     score = (jaccard * peso_jaccard + sequence * peso_sequence)
     print(f"[SIMILARIDADE] '{a}' x '{b}' => Jaccard: {jaccard:.2f}, SeqMatch: {sequence:.2f}, Score Final: {score:.2f}")
@@ -105,7 +103,7 @@ def buscar_amazon():
                 sim = similaridade(descricao, titulo_busca)
                 print(f"[SIMILARIDADE] '{descricao}' x '{titulo_busca}' = {sim:.2f}")
 
-                if sim >= 0.4:
+                if sim >= 0.3:
                     titulo = titulo_busca
                     foto = produto.get("product_photo", "")
                     url = produto.get("product_url", "")
