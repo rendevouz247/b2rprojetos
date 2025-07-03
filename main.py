@@ -16,9 +16,12 @@ RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
+def normalizar(texto):
+    return " ".join(sorted(texto.lower().replace(",", "").replace(".", "").split()))
+
 def jaccard_similarity(text1, text2):
-    set1 = set(text1.lower().split())
-    set2 = set(text2.lower().split())
+    set1 = set(text1.split())
+    set2 = set(text2.split())
     intersection = set1.intersection(set2)
     union = set1.union(set2)
     if not union:
@@ -26,8 +29,11 @@ def jaccard_similarity(text1, text2):
     return len(intersection) / len(union)
 
 def similaridade(a, b):
-    jaccard = jaccard_similarity(a, b)
-    sequence = SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    norm_a = normalizar(a)
+    norm_b = normalizar(b)
+
+    jaccard = jaccard_similarity(norm_a, norm_b)
+    sequence = SequenceMatcher(None, norm_a, norm_b).ratio()
 
     peso_jaccard = 0.3
     peso_sequence = 0.7
