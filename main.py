@@ -16,7 +16,6 @@ RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
-
 STOPWORDS = {'de', 'do', 'da', 'para', 'com', 'e', 'em', 'a', 'o', 'os', 'as', 'no', 'na', 'um', 'uma', 'unissex'}
 
 def normalizar(texto):
@@ -109,23 +108,30 @@ def buscar_amazon():
             produtos = busca.json().get("data", {}).get("products", [])
             print(f"[AMAZON] {len(produtos)} produtos encontrados para '{descricao}'")
 
-            if produtos:
-                produto = produtos[0]
+            melhor_sim = 0
+            melhor_produto = None
+
+            for produto in produtos:
                 titulo_busca = produto.get("product_title", "")
                 sim = similaridade(descricao, titulo_busca)
-                print(f"[SIMILARIDADE] '{descricao}' x '{titulo_busca}' = {sim:.2f}")
+                if sim > melhor_sim:
+                    melhor_sim = sim
+                    melhor_produto = produto
 
-                if sim >= 0.3:
-                    titulo = titulo_busca
-                    foto = produto.get("product_photo", "")
-                    url = produto.get("product_url", "")
-                    preco_str = produto.get("product_price", "")
-                    if preco_str:
-                        preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
-                        try:
-                            preco = float(preco_str)
-                        except:
-                            preco = 0
+            if melhor_sim >= 0.3 and melhor_produto is not None:
+                titulo = melhor_produto.get("product_title", "")
+                foto = melhor_produto.get("product_photo", "")
+                url = melhor_produto.get("product_url", "")
+                preco_str = melhor_produto.get("product_price", "")
+                if preco_str:
+                    preco_str = preco_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+                    try:
+                        preco = float(preco_str)
+                    except:
+                        preco = 0
+                print(f"[SIMILARIDADE] Melhor produto para '{descricao}': '{titulo}' com score {melhor_sim:.2f}")
+            else:
+                print(f"[SIMILARIDADE] Nenhum produto com score suficiente para '{descricao}'.")
         else:
             print(f"[ERRO] Erro na API Amazon: {busca.status_code} - {busca.text}")
 
