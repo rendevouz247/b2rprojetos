@@ -17,7 +17,7 @@ SUPABASE_TABLE = "alertas_comunitarios"
 TWITTER_USERNAME = "OndeTemTiroteio"  # pode alterar aqui
 TWITTER_BEARER = os.getenv("TWITTER_BEARER_TOKEN")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ================= ROTAS =====================
 @app.get("/coletar-alertas")
