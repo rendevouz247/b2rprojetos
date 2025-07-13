@@ -4,8 +4,10 @@ import requests
 import os
 import uuid
 import time
+from supabase import create_client
 
-app = FastAPI()
+app = Flask(__name__)
+
 
 # ================= CONFIG ====================
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -15,10 +17,7 @@ SUPABASE_TABLE = "alertas_comunitarios"
 TWITTER_USERNAME = "OndeTemTiroteio"  # pode alterar aqui
 TWITTER_BEARER = os.getenv("TWITTER_BEARER_TOKEN")
 
-HEADERS_SUPABASE = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}"
-}
+supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 # ================= ROTAS =====================
 @app.get("/coletar-alertas")
@@ -155,6 +154,5 @@ def grava_supabase(dados):
     except Exception as e:
         print("❌ Erro ao gravar no Supabase:", e)
 
-# ============ TESTE LOCAL ============
-if __name__ == "__main__":
-    coletar_alertas()
+if __name__ == '__main__':
+    app.run()
