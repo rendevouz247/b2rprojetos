@@ -3,3 +3,5 @@ requests
 supabase
 gunicorn
 flask-cors
+fastapi
+uvicorn[standard]
